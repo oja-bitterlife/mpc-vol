@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""mpc-vol: CUI to manipulate mpc volume in terminal."""
+
+import curses
+import subprocess
+import sys
+
+
+def get_volume():
+    """Get current mpc volume (0-100). Returns None on error."""
+    try:
+        result = subprocess.run(
+            ["mpc", "volume"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            return None
+        # Output format: "volume: 50%"
+        line = result.stdout.strip()
+        if line.startswith("volume:"):
+            return int(line.split()[1].rstrip("%"))
+    except (FileNotFoundError, ValueError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
+def set_volume(vol):
+    """Set mpc volume (0-100). Returns True on success."""
+    try:
+        result = subprocess.run(
+            ["mpc", "volume", str(vol)],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+def draw_ui(stdscr, volume, error_msg=None):
+    """Draw the volume control UI."""
+    stdscr.clear()
+    height, width = stdscr.getmaxyx()
+
+    # Title
+    title = "mpc-vol"
+    stdscr.addstr(1, (width - len(title)) // 2, title, curses.A_BOLD)
+
+    if error_msg:
+        msg = f"Error: {error_msg}"
+        stdscr.addstr(3, (width - len(msg)) // 2, msg, curses.color_pair(2))
+    elif volume is None:
+        msg = "Failed to get volume. Is mpc/mpd running?"
+        stdscr.addstr(3, (width - len(msg)) // 2, msg, curses.color_pair(2))
+    else:
+        # Volume bar
+        bar_width = min(50, width - 10)
+        filled = int(bar_width * volume / 100)
+        bar = "█" * filled + "░" * (bar_width - filled)
+        vol_label = f"Volume: {volume:3d}%"
+        bar_line = f"[{bar}]"
+
+        stdscr.addstr(3, (width - len(vol_label)) // 2, vol_label, curses.A_BOLD)
+        stdscr.addstr(5, (width - len(bar_line)) // 2, bar_line, curses.color_pair(1))
+
+    # Controls
+    controls = [
+        "↑ / + / k    Increase volume (+1)",
+        "↓ / - / j    Decrease volume (-1)",
+        "PgUp         Increase volume (+10)",
+        "PgDn         Decrease volume (-10)",
+        "q            Quit",
+    ]
+    row = height - len(controls) - 2
+    for i, line in enumerate(controls):
+        stdscr.addstr(row + i, (width - len(line)) // 2, line)
+
+    stdscr.refresh()
+
+
+def main(stdscr):
+    curses.curs_set(0)
+    curses.start_color()
+    curses.use_default_colors()
+    curses.init_pair(1, curses.COLOR_GREEN, -1)
+    curses.init_pair(2, curses.COLOR_RED, -1)
+    stdscr.keypad(True)
+    stdscr.timeout(500)
+
+    volume = get_volume()
+    error_msg = None
+    draw_ui(stdscr, volume, error_msg)
+
+    while True:
+        key = stdscr.getch()
+
+        if key in (ord("q"), ord("Q"), 27):  # q, Q, Escape
+            break
+
+        if volume is None:
+            # Retry to get volume on any keypress
+            volume = get_volume()
+            draw_ui(stdscr, volume, error_msg)
+            continue
+
+        new_volume = volume
+        if key in (curses.KEY_UP, ord("+"), ord("k")):
+            new_volume = min(100, volume + 1)
+        elif key in (curses.KEY_DOWN, ord("-"), ord("j")):
+            new_volume = max(0, volume - 1)
+        elif key == curses.KEY_PPAGE:  # Page Up
+            new_volume = min(100, volume + 10)
+        elif key == curses.KEY_NPAGE:  # Page Down
+            new_volume = max(0, volume - 10)
+        elif key == curses.KEY_RESIZE:
+            draw_ui(stdscr, volume, error_msg)
+            continue
+        elif key == -1:
+            # Timeout: refresh volume from mpc
+            volume = get_volume()
+            if volume is not None:
+                error_msg = None
+            draw_ui(stdscr, volume, error_msg)
+            continue
+
+        if new_volume != volume:
+            if set_volume(new_volume):
+                volume = new_volume
+                error_msg = None
+            else:
+                error_msg = "Failed to set volume"
+        draw_ui(stdscr, volume, error_msg)
+
+
+def run():
+    try:
+        curses.wrapper(main)
+    except KeyboardInterrupt:
+        pass
+    except curses.error as e:
+        print(f"Terminal error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    run()
