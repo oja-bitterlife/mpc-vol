@@ -1,4 +1,4 @@
-module mpc-vol
+module github.com/oja-bitterlife/mpc-vol
 
 go 1.25.8
 
