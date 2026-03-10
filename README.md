@@ -1,5 +1,5 @@
 # mpc-vol
-terminal volume controller for mpc
+mpc volume controller
 
 ## Description
 ほぼGeminiさんに作ってもらった、カーソルキーでmpcの音量を変えるコマンドラインユーティリティーです。
