@@ -18,7 +18,7 @@ type model struct {
 func getVersion() string {
 	info, ok := debug.ReadBuildInfo()
 	if ok && info.Main.Version != "" {
-		return info.Main.Version // ここに v0.1.3 などが入る
+		return strings.Split(info.Main.Version, "-")[0]
 	}
 	return "dev"
 }
