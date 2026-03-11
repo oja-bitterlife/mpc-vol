@@ -10,6 +10,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+var Version = "dev"
+
 type model struct {
 	volume int
 }
@@ -67,7 +69,8 @@ func (m model) View() string {
 
 	bar := strings.Repeat("■", filled) + strings.Repeat(" ", width-filled)
 
-	return fmt.Sprintf("mpc volume [%-30s] %3d%%", bar, m.volume)
+	// return fmt.Sprintf("mpc volume [%-30s] %3d%%", bar, m.volume)
+	return fmt.Sprintf("mpc-vol %s\n[%-30s] %3d%%", Version, bar, m.volume)
 }
 
 func main() {
@@ -83,6 +86,6 @@ func main() {
 	// 3. 終了後、最後に確定した状態を1回だけ表示する
 	// 型アサーションで最終的なModelを取り出し、Viewを呼ぶだけ
 	if finalModel, ok := m.(model); ok {
-		fmt.Printf("\r%s\n", finalModel.View())
+		fmt.Printf("\033[2A\r%s\n", finalModel.View())
 	}
 }
