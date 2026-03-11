@@ -14,49 +14,48 @@ type model struct {
 	volume int
 }
 
-func getVolume() int {
+func getInitialVolume() int {
 	out, _ := exec.Command("mpc", "volume").Output()
+
+	// volume:100% という形式で出力されるので、そこから数値だけを抜き取る
 	result := strings.TrimSpace(string(out))
 	value := strings.TrimSuffix(strings.TrimPrefix(string(result), "volume:"), "%")
-	v, err := strconv.Atoi(strings.TrimSpace(value))
-	if err == nil {
+	if v, err := strconv.Atoi(strings.TrimSpace(value)); err == nil {
 		return v
+	} else {
+		// エラー終了
+		println("Failed to get initial volume: ", result)
+		os.Exit(1)
 	}
+
 	return 0
 }
 
-func setVolume(diff int) {
-	arg := fmt.Sprintf("%+d", diff)
-	if diff > 0 {
-		arg = "+" + strconv.Itoa(diff)
-	}
-	exec.Command("mpc", "volume", arg).Run()
+func setVolume(m model, diff int) int {
+	// 音量を0-100の範囲に収める
+	m.volume = min(max(m.volume+diff, 0), 100)
+	exec.Command("mpc", "volume", fmt.Sprintf("%d", m.volume)).Run()
+
+	return m.volume
 }
 
 func (m model) Init() tea.Cmd { return nil }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	diff := 0
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c", "enter", "esc":
 			return m, tea.Quit
 		case "up":
-			diff = 5
+			m.volume = setVolume(m, 5)
 		case "down":
-			diff = -5
+			m.volume = setVolume(m, -5)
 		case "right":
-			diff = 1
+			m.volume = setVolume(m, 1)
 		case "left":
-			diff = -1
+			m.volume = setVolume(m, -1)
 		}
-	}
-
-	// 変更の反映と、Modelの更新
-	if diff != 0 {
-		setVolume(diff)
-		m.volume = min(max(m.volume+diff, 0), 100)
 	}
 
 	return m, nil
@@ -73,7 +72,7 @@ func (m model) View() string {
 
 func main() {
 	// 1. プログラムの起動
-	p := tea.NewProgram(model{volume: getVolume()})
+	p := tea.NewProgram(model{volume: getInitialVolume()})
 
 	// 2. 実行（ここでBubble Teaが画面を占有・更新する）
 	m, err := p.Run()
