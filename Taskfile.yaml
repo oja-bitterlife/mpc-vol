@@ -1,0 +1,28 @@
+version: '3'
+
+vars:
+  VERSION: 
+    sh: git describe --tags --always --dirty || echo "dev"
+  BINARY_NAME: mpc-vol
+
+tasks:
+  build:
+    desc: "バージョン情報を埋め込んでビルドします"
+    cmds:
+      - go build -ldflags "-X main.Version={{.VERSION}}" -o {{.BINARY_NAME}}
+    sources:
+      - ./*.go
+    generates:
+      - "{{.BINARY_NAME}}"
+
+  clean:
+    desc: "clean"
+    cmds:
+      - rm {{.BINARY_NAME}}
+
+  release:
+    desc: "タグを打ってプッシュします (使用例: task release TAG=v0.1.2)"
+    cmds:
+      - git tag {{.TAG}}
+      - git push origin {{.TAG}}
+      - git push origin main
