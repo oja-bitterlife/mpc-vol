@@ -4,16 +4,23 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var Version = "dev"
-
 type model struct {
 	volume int
+}
+
+func getVersion() string {
+	info, ok := debug.ReadBuildInfo()
+	if ok && info.Main.Version != "" {
+		return info.Main.Version // ここに v0.1.3 などが入る
+	}
+	return "dev"
 }
 
 func getInitialVolume() int {
@@ -70,7 +77,7 @@ func (m model) View() string {
 	bar := strings.Repeat("■", filled) + strings.Repeat(" ", width-filled)
 
 	// return fmt.Sprintf("mpc volume [%-30s] %3d%%", bar, m.volume)
-	return fmt.Sprintf("mpc-vol %s\n[%-30s] %3d%%", Version, bar, m.volume)
+	return fmt.Sprintf("mpc-vol %s\n[%-30s] %3d%%", getVersion(), bar, m.volume)
 }
 
 func main() {

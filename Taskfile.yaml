@@ -8,7 +8,7 @@ tasks:
   build:
     desc: "バージョン情報を埋め込んでビルドします"
     cmds:
-      - go build -ldflags "-X main.Version={{.VERSION}}" -o {{.BINARY_NAME}}
+      - go build -o {{.BINARY_NAME}}
     sources:
       - ./*.go
     generates:
