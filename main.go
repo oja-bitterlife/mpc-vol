@@ -16,41 +16,49 @@ type model struct {
 
 func getVolume() int {
 	out, _ := exec.Command("mpc", "volume").Output()
-	s := strings.Fields(string(out))
-	if len(s) > 1 {
-		v, _ := strconv.Atoi(strings.TrimSuffix(s[1], "%"))
+	result := strings.TrimSpace(string(out))
+	value := strings.TrimSuffix(strings.TrimPrefix(string(result), "volume:"), "%")
+	v, err := strconv.Atoi(strings.TrimSpace(value))
+	if err == nil {
 		return v
 	}
 	return 0
 }
 
-func setVolume(diff int) int {
+func setVolume(diff int) {
 	arg := fmt.Sprintf("%+d", diff)
 	if diff > 0 {
 		arg = "+" + strconv.Itoa(diff)
 	}
 	exec.Command("mpc", "volume", arg).Run()
-	return getVolume()
 }
 
 func (m model) Init() tea.Cmd { return nil }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	diff := 0
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c", "enter", "esc":
 			return m, tea.Quit
 		case "up":
-			m.volume = setVolume(5)
+			diff = 5
 		case "down":
-			m.volume = setVolume(-5)
+			diff = -5
 		case "right":
-			m.volume = setVolume(1)
+			diff = 1
 		case "left":
-			m.volume = setVolume(-1)
+			diff = -1
 		}
 	}
+
+	// 変更の反映と、Modelの更新
+	if diff != 0 {
+		setVolume(diff)
+		m.volume = min(max(m.volume+diff, 0), 100)
+	}
+
 	return m, nil
 }
 
