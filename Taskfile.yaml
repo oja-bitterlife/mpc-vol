@@ -19,9 +19,8 @@ tasks:
     cmds:
       - rm {{.BINARY_NAME}}
 
-  release:
-    desc: "タグを打ってプッシュします (使用例: task release TAG=v0.1.2)"
+  tag:
+    desc: "タグ打ち"
     cmds:
       - git tag {{.VERSION}}
-      - git push origin {{.VERSION}}
-      - git push origin main
+
